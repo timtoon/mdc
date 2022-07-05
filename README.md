@@ -18,5 +18,4 @@ To download the episodes, run the PHP file in the terminal:
 
 ## Bugs
 
-* The scraper assumes one paragraph per entry, so an entry with two paragraphs will break the `DOMElement` by looking in the wrong place for the MP3 url
 * Don't change the value for `$pages` once set, or it'll mess up the episode count

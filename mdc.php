@@ -8,7 +8,7 @@ $dir          = '';
 
 if($dir) {
     $dir .= '/';
-    mkdir(get_include_path().$dir);
+    mkdir(getcwd().'/'.$dir);
 }
 
 $dom = new DOMDocument();
@@ -32,14 +32,19 @@ for($i = $pages; $i > 0; $i--) {
             $info = $entry->childNodes->item(3);
             $body = $info->childNodes;
 
+            $count = $body->length; // Use this to count backwards for the length of the $text and position of $mp3Url
+
             $title = $body->item(1)->nodeValue;
 
             $date = $body->item(3)->nodeValue;
 
-            $text = $dom->saveHTML($body->item(5));
+            $text = '';
+            for($k=5; $k <= ($count - 8); $k++) {
+                $text .= trim($dom->saveHTML($body->item($k)))."\n";
+            }
 
             try {
-                $mp3Url = $body->item(9)->childNodes->item(0)->getAttribute('data-uri');   // just plain guesswork
+                $mp3Url = $body->item($count - 4)->childNodes->item(0)->getAttribute('data-uri');   // just plain guesswork
                 $fileName = $dir . $episodeNumber . ' - ' . array_pop(explode('/',$mp3Url));
 
                 print "=== {$episodeNumber} {$title} ===\n";
