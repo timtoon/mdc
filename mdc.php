@@ -1,8 +1,15 @@
 <?php
 
-$url = 'https://megadumbcast.podbean.com/page/';
-$pages = 123;
+$url          = 'https://megadumbcast.podbean.com/page/';
+$pages        = 123;    // Work backwards from the end, to get episode #1
 $episodeCount = 0;
+$resumeAt     = 0;      // Resume at this episode after a crash
+$dir          = '';
+
+if($dir) {
+    $dir .= '/';
+    mkdir(get_include_path().$dir);
+}
 
 $dom = new DOMDocument();
 
@@ -17,32 +24,39 @@ for($i = $pages; $i > 0; $i--) {
 
     for($j = $entries->length - 1; $j >= 0; $j--) {
         $episodeCount--;
-        $episodeNumber = str_pad(abs($episodeCount),  3, "0", STR_PAD_LEFT);
-        $entry = $entries->item($j);    // DOMElement
+        print "p{$i}, e{$j}: {$episodeCount}\n";
+        if(abs($episodeCount) >= $resumeAt) {
+            $episodeNumber = str_pad(abs($episodeCount),  4, "0", STR_PAD_LEFT);
+            $entry = $entries->item($j);    // DOMElement
 
-        $info = $entry->childNodes->item(3);
-        $body = $info->childNodes;
+            $info = $entry->childNodes->item(3);
+            $body = $info->childNodes;
 
-        $title = $body->item(1)->nodeValue;
+            $title = $body->item(1)->nodeValue;
 
-        $date = $body->item(3)->nodeValue;
+            $date = $body->item(3)->nodeValue;
 
-        $text = $dom->saveHTML($body->item(5));
+            $text = $dom->saveHTML($body->item(5));
 
-        $mp3Url = $body->item(9)->childNodes->item(0)->getAttribute('data-uri');   // just plain guesswork
-        $fileName = $episodeNumber . ' - ' . array_pop(explode('/',$mp3Url));
+            try {
+                $mp3Url = $body->item(9)->childNodes->item(0)->getAttribute('data-uri');   // just plain guesswork
+                $fileName = $dir . $episodeNumber . ' - ' . array_pop(explode('/',$mp3Url));
 
-        print "\n=== {$episodeNumber} {$title} ===\n";
+                print "=== {$episodeNumber} {$title} ===\n";
 
-        $myfile = fopen(str_replace('.mp3','.html',$fileName), "w");
-        fwrite($myfile, "<p>{$title}</p>\n");
-        fwrite($myfile, "<p>{$date}</p>\n");
-        fwrite($myfile, $text);
-        fclose($myfile);
+                $myfile = fopen(str_replace('.mp3','.html',$fileName), "w");
+                fwrite($myfile, "<p>{$title}</p>\n");
+                fwrite($myfile, "<p>{$date}</p>\n");
+                fwrite($myfile, $text);
+                fclose($myfile);
 
-        $mp3Data = file_get_contents($mp3Url);
-        $mp3File = fopen($fileName, "w");
-        fwrite($mp3File, $mp3Data);
-        fclose($mp3File);
+                $mp3Data = file_get_contents($mp3Url);
+                $mp3File = fopen($fileName, "w");
+                fwrite($mp3File, $mp3Data);
+                fclose($mp3File);
+            } catch(Exception $e) {
+                print $e->getMessage()."\n";
+            }
+        }
     }
 }
