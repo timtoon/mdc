@@ -1,33 +1,48 @@
 <?php
 
-
 $url = 'https://megadumbcast.podbean.com/page/';
 $pages = 123;
-$pages = 1;
 $episodeCount = 0;
+
+$dom = new DOMDocument();
 
 for($i = $pages; $i > 0; $i--) {
 
-//    $data = file_get_contents($url . $i . '/');
-    $data = file_get_contents('page.html');
+    $html = file_get_contents($url . $i . '/');
 
-    $playlist = explode('<div class="playlist-panel">',$data)[1];
-    $content = explode('<div class="navigation">',$playlist);
-    $posts = explode('<div class="thumbnail">',$content[0]);
+    @$dom->loadHTML($html);
 
-    for($i = count($posts); $i > 0; $i--) {
+    $finder = new DomXPath($dom);
+    $entries = $finder->query("//*[contains(@class, 'entry')]");
+
+    for($j = $entries->length - 1; $j >= 0; $j--) {
         $episodeCount--;
-        $post = '';
-        $name = str_pad(abs($episodeCount),  3, "0", STR_PAD_LEFT);
-        $post = explode('<div class="info">', $posts[$i])[1];
-        $post = explode("<iframe id='audio_iframe'", $post)[0];
+        $episodeNumber = str_pad(abs($episodeCount),  3, "0", STR_PAD_LEFT);
+        $entry = $entries->item($j);    // DOMElement
 
-        $xpath = new DOMXPath($post);
+        $info = $entry->childNodes->item(3);
+        $body = $info->childNodes;
 
+        $title = $body->item(1)->nodeValue;
 
-//        $myfile = fopen($name . ".html", "w");
-//        fwrite($myfile, $post);
-//        fclose($myfile);
+        $date = $body->item(3)->nodeValue;
+
+        $text = $dom->saveHTML($body->item(5));
+
+        $mp3Url = $body->item(9)->childNodes->item(0)->getAttribute('data-uri');   // just plain guesswork
+        $fileName = $episodeNumber . ' - ' . array_pop(explode('/',$mp3Url));
+
+        print "\n=== {$episodeNumber} {$title} ===\n";
+
+        $myfile = fopen(str_replace('.mp3','.html',$fileName), "w");
+        fwrite($myfile, "<p>{$title}</p>\n");
+        fwrite($myfile, "<p>{$date}</p>\n");
+        fwrite($myfile, $text);
+        fclose($myfile);
+
+        $mp3Data = file_get_contents($mp3Url);
+        $mp3File = fopen($fileName, "w");
+        fwrite($mp3File, $mp3Data);
+        fclose($mp3File);
     }
-
 }
